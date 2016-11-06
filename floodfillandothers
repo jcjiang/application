@@ -1,0 +1,70 @@
+/**
+	 * Flood-fill algorithm
+	 */
+public void findRegions(Color targetColor) {
+		// Nested loop over every pixel
+		System.out.println("image" + image);
+		BufferedImage visited = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+
+		regions = new ArrayList<ArrayList<Point>>();
+		for (int y = 0; y < image.getHeight(); y++) {
+			for (int x = 0; x < image.getWidth(); x++) { //loop over all pixels
+				if (visited.getRGB(x, y) == 0 && colorMatch(targetColor, new Color(image.getRGB(x, y)))) { //if unvisited and right color
+					Stack<Point> toVisit = new Stack<Point>();
+					toVisit.push(new Point(x,y)); //keep track of which pixels need to be visited, initially just the one
+					ArrayList<Point> temp = new ArrayList<Point>(); //current region
+					while (!toVisit.empty()){ //as long as there is a pixel to be visited
+						Point a = toVisit.pop(); //get one to visit
+						if (visited.getRGB(a.x, a.y) == 0) {
+							temp.add(a);	//add to region
+							visited.setRGB(a.x, a.y, 1); //set visited
+							for (int m = a.y - 1; m <= a.y + 1; m++) { //loop through all 8 neighbors
+								for (int n = a.x - 1; n <= a.x + 1; n++) {
+									if (m >= 0 && m < image.getHeight() && n >= 0 && n < image.getWidth()) {
+										if (visited.getRGB(n, m) == 0 && colorMatch(targetColor, new Color(image.getRGB(n, m)))) {
+											//if unvisited and right color
+											toVisit.push(new Point(n, m)); //add neighbor to list to be visited
+										}
+									}
+									
+								}
+							}
+						}
+					}
+					if (temp.size() > minRegion) {
+						regions.add(temp);
+					}
+				}
+			}
+		}
+	}
+	
+
+	/**
+	 * Tests whether the two colors are "similar enough" (your definition, subject to the maxColorDiff threshold, which you can vary).
+	 */
+	private static boolean colorMatch(Color c1, Color c2) {
+		if (Math.abs(c1.getRed() - c2.getRed()) <= maxColorDiff) {
+			if (Math.abs(c1.getBlue() - c2.getBlue()) <= maxColorDiff) {
+				if (Math.abs(c1.getGreen() - c2.getGreen()) <= maxColorDiff) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Returns the largest region detected (if any region has been detected)
+	 */
+	public ArrayList<Point> largestRegion() {
+		int size = 0;
+		ArrayList<Point> result = new ArrayList<Point>();
+		for (ArrayList<Point> a : regions) {
+			if (a.size() > size) {
+				size = a.size();
+				result = a;
+			}
+		}
+		return result;
+	}
