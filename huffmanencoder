@@ -1,0 +1,140 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.TreeMap;
+import java.util.Iterator;
+import java.util.PriorityQueue;
+import java.util.Set;
+
+public class HuffmanEncoder {
+	private static int pqSize; //size of priority queue
+	private static int iterations; //number of times a character should be written when its code is "" AKA only one character type in file
+	
+	//compresses file into bits
+	//codes: the code map, pathname: name of the file to access
+	public static void compress(TreeMap<Character, String> codes, String pathname) throws IOException, FileNotFoundException {
+		BufferedReader input = new BufferedReader(new FileReader(pathname + ".txt"));
+		int current;
+		BufferedBitWriter bitOutput = new BufferedBitWriter(pathname + "_compressed" + ".txt");
+		while ((current = input.read()) != -1) { //while still characters to read
+			char temp = (char)current; //casts int to char
+			Character k = (Character)temp; //casts primitive
+			String currentCode = codes.get(k);
+			for (int i = 0; i < currentCode.length(); i++) { //iterates over String
+				if (currentCode.charAt(i) == '0') {
+					bitOutput.writeBit(false); //write to bit
+				}
+				else {
+					bitOutput.writeBit(true); //write to bit
+				}
+			}
+		}
+		bitOutput.close();
+		input.close();
+	}
+	//tree: the code tree, pathname: 
+	public static void decompress(BinaryTree<TreeNode> tree, String pathname) throws IOException, FileNotFoundException{
+		BufferedBitReader bitInput = new BufferedBitReader(pathname + "_compressed" + ".txt");
+		BufferedWriter output = new BufferedWriter(new FileWriter(pathname + "_decompressed" + ".txt")); 
+		BinaryTree<TreeNode> current = tree;
+		if (bitInput.hasNext() == false) { //if file only has one type of character
+			char temp = current.getData().getCharacter(); //find character
+			  for (int i = 0; i < iterations; i++) { //prints character the number of times it should be printed
+				  output.write(temp);
+			  }
+		}
+		while (bitInput.hasNext()) { //while file has more bits to read
+		//previous if loop guarantees that there will not be a character at the root
+			  boolean bit = bitInput.readBit();
+			  if (bit == false) { //traverses tree
+				  current = current.getLeft();
+				  if (current.isLeaf()) { //includes last character
+					  char temp = current.getData().getCharacter();
+					  output.write(temp);
+					  current = tree; //return to root
+				  }
+			  	}
+			  else {
+				  current = current.getRight(); //traverses tree
+				  if (current.isLeaf()) { //includes last character
+					  char temp = current.getData().getCharacter();
+					  output.write(temp);
+					  current = tree; //return to root
+				  }
+				}
+			}
+		bitInput.close();
+		output.close();
+	}
+	
+	//counts frequency of each character and creates a frequency table
+	public static TreeMap<Character, Integer> makeTable(String pathname) throws IOException, FileNotFoundException { 
+		TreeMap<Character, Integer> freqTable = new TreeMap<Character, Integer>(); //frequency table
+		BufferedReader input = new BufferedReader(new FileReader(pathname));
+		int current;
+		while ((current = input.read()) != -1) { //while still characters to be read
+			char temp = (char)current;
+			Character k = (Character)temp;
+			if (freqTable.containsKey(k)) { //increases frequency if key exists
+				int freq = (int)freqTable.get(k);
+				freq++;
+				freqTable.put(k,freq);
+			} 
+			else //insert key if key does not already exist within
+			{
+				freqTable.put(k,1);
+			}
+			iterations = freqTable.get(k); //sets variable to frequency of key, to be used if key character is only character in file
+		}
+		input.close();	
+		Set<Character> chars = freqTable.keySet();
+		pqSize = chars.size(); //sets size of priority queue, to check if file is empty
+		return freqTable;
+	}
+	
+	public static PriorityQueue<BinaryTree<TreeNode>> makePQ(TreeMap<Character, Integer> input) { //creates priority queue
+		TreeComparator treeCompare = new TreeComparator();
+		Set<Character> characters = input.keySet();
+		Iterator<Character> iterator = characters.iterator();
+		PriorityQueue<BinaryTree<TreeNode>> result = new PriorityQueue<BinaryTree<TreeNode>>(pqSize, treeCompare);
+		while (iterator.hasNext()) { //makes every key-value set into a node, inserts into priority queue
+			Character curr = iterator.next();
+			TreeNode temp = new TreeNode(curr, input.get(curr)); //creates TreeNode for every key and value in map
+			result.add(new BinaryTree<TreeNode>(temp)); //adds binary trees containing each TreeNode to priority queue
+		}
+		return result; //returns priority queue
+	}
+	
+	public static BinaryTree<TreeNode> makeTree(PriorityQueue<BinaryTree<TreeNode>> pq) { //creates binary tree with lowest frequencies at leafs 
+		if (pq.size() > 1) { //takes lowest values out of priority queue, appends, insert back in until only one tree left in queue
+			BinaryTree<TreeNode> left = pq.poll();
+			BinaryTree<TreeNode> right = pq.poll();
+			int frequency = left.getData().getFreq() + right.getData().getFreq(); //finds sum of frequencies
+			BinaryTree<TreeNode> temp = new BinaryTree<TreeNode>(new TreeNode(null, frequency), left, right); //create new binary tree with a root that holds frequency sum
+			pq.add(temp); //add new tree to priority queue, it is automatically put in order
+			makeTree(pq); //recurses 
+			}
+		return pq.peek(); //returns remaining tree in queue
+	}
+	
+	public static TreeMap<Character, String> makeCodeMap(BinaryTree<TreeNode> input) {
+		TreeMap<Character, String> result = new TreeMap<Character, String>(); //creates code map
+		String code = ""; //creates code string
+		codeHelper(code, result, input); //calls helper recursion method
+		return result;
+	}
+	//pool: 
+	public static void codeHelper(String code, TreeMap<Character, String> codeMap, BinaryTree<TreeNode> inputTree) { //adds values to inputted map and string
+		if (inputTree.isLeaf()) {
+			codeMap.put(inputTree.getData().getCharacter(), code); //inserts key and value (character and code string) into code map
+		}
+		if (inputTree.hasLeft()) {
+			codeHelper(code + "0", codeMap, inputTree.getLeft()); //iterates down left subtree
+		}
+		if (inputTree.hasRight()) {
+			codeHelper(code + "1", codeMap, inputTree.getRight()); //iterates down right subtree
+		}
+	}
