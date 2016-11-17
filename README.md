@@ -1,2 +1,2 @@
-# dalilabapp
-contains files for my dali lab application
+# application
+contains files for my applications
